@@ -1,34 +1,18 @@
-import numpy as np
+"""Coherent axion-photon conversion."""
 
-def conversion_probability_uniform(B_T, L_m, g_ay):
-    """Return the coherent, weak-mixing vacuum conversion probability.
 
-    Assumes negligible momentum mismatch and absorption, and P << 1.
+def conversion_probability_uniform(b: float, length: float, g: float) -> float:
+    """Calculate vacuum conversion in a uniform transverse field.
 
-    Parameters
-    ----------
-    B_T : float
-        Transverse magnetic field strength in Tesla.
-    L_m : float
-        Length of the magnetic field region in meters.
-    g_ay : float
-        Axion-photon coupling constant in GeV^-1.
-
-    Returns
-    -------
-    P : float
-        Conversion probability (dimensionless).
+    Inputs: b, field [T]; length, path length [m]; g, coupling [GeV^-1].
+    Output: dimensionless probability; assumes coherence and weak mixing.
+    Reference: Raffelt & Stodolsky (1988), doi:10.1103/PhysRevD.37.1237.
     """
-    # Convert units: Tesla to eV^2, meters to eV^-1
-    B_T_eV2 = B_T * 195.0  # 1 T = 195 eV^2
-    L_m_eV_inv = L_m * 5.07e6  # 1 m = 5.07e6 eV^-1
-    g_eV_inv = g_ay * 1e-9  # 1 GeV^-1 = 1e-9 eV^-1
+    b = b * 195.0  # eV^2
+    length = length * 5.07e6  # eV^-1
+    g = g * 1e-9  # eV^-1
+    return (g * b * length / 2) ** 2
 
-    # Conversion probability formula: P = (g_ay * B_T * L)^2 / 4
-    P = (g_eV_inv * B_T_eV2 * L_m_eV_inv)**2 / 4.0
-
-    return P
 
 if __name__ == "__main__":
-    p_example = conversion_probability_uniform(9, 9.26, 1e-10)
-    print(f"Conversion probability (example): {p_example:.3e}")
+    print(conversion_probability_uniform(9, 9.26, 1e-10))

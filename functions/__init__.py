@@ -1,1 +1,1 @@
-"""Solar axion flux and conversion utilities."""
+"""Axion flux, conversion, geomagnetic fields, and orbit geometry."""
