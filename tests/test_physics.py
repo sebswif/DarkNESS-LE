@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from conversion import conversion_probability_uniform
-from solar_flux import axion_flux, spectrum_summary
+from functions.conversion import conversion_probability_uniform
+from functions.solar_flux import axion_flux, spectrum_summary
 
 
 class PhysicsChecks(unittest.TestCase):

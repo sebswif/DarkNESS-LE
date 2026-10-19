@@ -11,4 +11,4 @@ requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]
 
 [tool.setuptools]
-py-modules = ["solar_flux", "conversion"]
+packages = ["functions"]

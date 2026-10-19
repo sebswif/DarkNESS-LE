@@ -11,8 +11,8 @@ From this repository directory, in PowerShell:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\python.exe solar_flux.py
-.\.venv\Scripts\python.exe conversion.py
+.\.venv\Scripts\python.exe -m functions.solar_flux
+.\.venv\Scripts\python.exe -m functions.conversion
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
@@ -22,8 +22,8 @@ On Linux/macOS use `.venv/bin/python` instead.
 
 ```python
 import numpy as np
-from solar_flux import axion_flux, spectrum_summary
-from conversion import conversion_probability_uniform
+from functions.solar_flux import axion_flux, spectrum_summary
+from functions.conversion import conversion_probability_uniform
 
 energies_kev = np.linspace(0.1, 10.0, 100)
 g_ay = 1e-10  # GeV^-1
