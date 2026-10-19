@@ -45,7 +45,8 @@ is approximately 1.70 × 10⁻¹⁷. The solar spectrum uses the CAST (2007) fit
 ## Field and geometry
 
 ```python
-from functions.field import igrf_field, line_of_sight
+from functions.field import igrf_field
+from functions.lineofsight import line_of_sight
 from functions.geometry import orbit_position, sun_direction
 
 t = "2026-10-19T00:00:00"  # UTC

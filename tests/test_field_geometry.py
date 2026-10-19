@@ -8,11 +8,12 @@ from astropy import units as u
 from astropy.time import Time
 
 from functions.field import (
-    R_EARTH_KM, dipole_field, igrf_field, line_of_sight, load_igrf,
+    R_EARTH_KM, dipole_field, igrf_field, load_igrf,
 )
 from functions.geometry import (
     MU_EARTH_KM3_S2, R_EQUATOR_KM, orbit_position, sun_direction,
 )
+from functions.lineofsight import line_of_sight
 from functions.solar_flux import axion_flux
 
 T = "2026-10-19T00:00:00"
@@ -116,7 +117,7 @@ class FieldChecks(unittest.TestCase):
 
     def test_transverse_vector_cancellation(self):
         b = np.array([[1, 1, 0], [1, 0, 0], [1, -1, 0]], dtype=float)
-        with patch("functions.field.igrf_field", return_value=b):
+        with patch("functions.lineofsight.igrf_field", return_value=b):
             ray = line_of_sight(
                 R, [1, 0, 0], T, length=1, n=3, report=False,
             )
