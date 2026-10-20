@@ -7,13 +7,14 @@ import numpy as np
 from astropy import units as u
 from astropy.time import Time
 
-from functions.field import (
+from functions.bfield import (
     R_EARTH_KM, dipole_field, igrf_field, load_igrf,
 )
 from functions.geometry import (
-    MU_EARTH_KM3_S2, R_EQUATOR_KM, orbit_position, sun_direction,
+    J2, MU_EARTH_KM3_S2, R_EQUATOR_KM, _motion, _rk4,
+    orbit_position, sun_direction,
 )
-from functions.lineofsight import line_of_sight
+from functions.lineofsight import los
 from functions.solar_flux import axion_flux
 
 T = "2026-10-19T00:00:00"
@@ -74,7 +75,7 @@ class FieldChecks(unittest.TestCase):
             [-3000, -4500, 30000], [1500, -4500, -60000],
             [1500, -4500, -60000], [1500, 9000, 30000],
         ]) * 1e-9
-        with patch("functions.field.load_igrf", return_value=(g, h)):
+        with patch("functions.bfield.load_igrf", return_value=(g, h)):
             np.testing.assert_allclose(
                 dipole_field(r, T, report=False), expected, atol=1e-18,
             )
@@ -104,13 +105,13 @@ class FieldChecks(unittest.TestCase):
         )
 
     def test_nadir_cutoff_and_outward_range(self):
-        ray = line_of_sight(R, [-1, 0, 0], T, n=11, report=False)
+        ray = los(R, [-1, 0, 0], T, n=11, report=False)
         self.assertTrue(ray["stopped_at_cutoff"])
         self.assertAlmostEqual(ray["distance_km"][-1], 440)
         self.assertAlmostEqual(ray["minimum_altitude_km"], 60)
         self.assertAlmostEqual(ray["zenith_deg"], 180)
         np.testing.assert_allclose(ray["B_perp_ecef_T"][:, 0], 0, atol=1e-20)
-        ray = line_of_sight(R, [2, 0, 0], T, length=100, n=3, report=False)
+        ray = los(R, [2, 0, 0], T, length=100, n=3, report=False)
         self.assertFalse(ray["stopped_at_cutoff"])
         self.assertAlmostEqual(ray["distance_km"][-1], 100)
         self.assertAlmostEqual(ray["minimum_altitude_km"], 500)
@@ -118,7 +119,7 @@ class FieldChecks(unittest.TestCase):
     def test_transverse_vector_cancellation(self):
         b = np.array([[1, 1, 0], [1, 0, 0], [1, -1, 0]], dtype=float)
         with patch("functions.lineofsight.igrf_field", return_value=b):
-            ray = line_of_sight(
+            ray = los(
                 R, [1, 0, 0], T, length=1, n=3, report=False,
             )
         self.assertEqual(ray["amplitude_Tm"], 0)
@@ -130,9 +131,9 @@ class FieldChecks(unittest.TestCase):
                 igrf_field(r, T, report=False)
         for args in ({"n": 1}, {"length": 0}, {"n": 2.5}):
             with self.assertRaises(ValueError):
-                line_of_sight(R, [1, 0, 0], T, report=False, **args)
+                los(R, [1, 0, 0], T, report=False, **args)
         with self.assertRaises(ValueError):
-            line_of_sight(R, [0, 0, 0], T, report=False)
+            los(R, [0, 0, 0], T, report=False)
 
 
 class GeometryChecks(unittest.TestCase):
@@ -153,19 +154,93 @@ class GeometryChecks(unittest.TestCase):
         np.testing.assert_allclose(r, [a, 0, 0], atol=1e-10)
         np.testing.assert_allclose(
             orbit_position(t + period * u.s, frame="eci", j2=False),
-            r, atol=1e-7,
+            r, atol=1e-4, rtol=0,  # Less than 0.1 m after one orbit.
         )
         for frame in ("eci", "ecef"):
-            r = orbit_position([T, "2026-10-20T00:00:00"], frame=frame)
+            r = orbit_position(
+                [T, "2026-10-20T00:00:00"], frame=frame, j2=False,
+            )
             self.assertEqual(r.shape, (2, 3))
-            np.testing.assert_allclose(np.linalg.norm(r, axis=-1), a)
+            np.testing.assert_allclose(
+                np.linalg.norm(r, axis=-1), a, atol=1e-4, rtol=0,
+            )
         self.assertGreater(np.linalg.norm(
             orbit_position("2026-10-20", frame="eci")
             - orbit_position("2026-10-20", frame="eci", j2=False)
         ), 1)
 
+    def test_rk4_order_and_j2_convergence(self):
+        a = R_EQUATOR_KM + 500
+        n = np.sqrt(MU_EARTH_KM3_S2 / a**3)
+        inc = np.deg2rad(97.4)
+        duration = 2000
+        expected = a * np.array([
+            np.cos(n * duration), np.sin(n * duration) * np.cos(inc),
+            np.sin(n * duration) * np.sin(inc),
+        ])
+        t = Time(T) + duration * u.s
+        coarse = orbit_position(t, frame="eci", j2=False, step=60)
+        fine = orbit_position(t, frame="eci", j2=False, step=30)
+        ratio = np.linalg.norm(coarse - expected) / np.linalg.norm(
+            fine - expected,
+        )
+        self.assertTrue(12 < ratio < 20, ratio)
+        r = [orbit_position(t, frame="eci", step=s) for s in (60, 30, 15)]
+        ratio = np.linalg.norm(r[0] - r[1]) / np.linalg.norm(r[1] - r[2])
+        self.assertTrue(12 < ratio < 20, ratio)
+        self.assertLess(np.linalg.norm(r[1] - r[2]), 0.001)
+
+    def test_time_order_shapes_and_backward_integration(self):
+        dt = np.array([[600, -600], [0, 600]])
+        t = Time(T) + dt * u.s
+        a = R_EQUATOR_KM + 500
+        phase = np.sqrt(MU_EARTH_KM3_S2 / a**3) * dt
+        expected = a * np.stack([
+            np.cos(phase), np.sin(phase), np.zeros_like(phase),
+        ], axis=-1)
+        r = orbit_position(t, inc=0, frame="eci", j2=False)
+        self.assertEqual(r.shape, (2, 2, 3))
+        np.testing.assert_allclose(r, expected, atol=1e-5, rtol=0)
+        np.testing.assert_array_equal(r[0, 0], r[1, 1])
+        self.assertEqual(orbit_position(T).shape, (3,))
+        for frame in ("eci", "ecef"):
+            r = orbit_position(Time([], format="isot"), frame=frame)
+            self.assertEqual(r.shape, (0, 3))
+
+    def test_force_and_conservation(self):
+        def potential(r):
+            radius = np.linalg.norm(r)
+            p2 = (3 * (r[2] / radius) ** 2 - 1) / 2
+            return -MU_EARTH_KM3_S2 / radius * (
+                1 - J2 * (R_EQUATOR_KM / radius) ** 2 * p2
+            )
+
+        state = np.array([5000, 2000, 4000, -1, 6, 4], dtype=float)
+        delta = np.eye(3) * 0.01
+        gradient = np.array([
+            (potential(state[:3] + d) - potential(state[:3] - d)) / 0.02
+            for d in delta
+        ])
+        np.testing.assert_allclose(
+            _motion(state, True)[3:], -gradient, rtol=1e-8, atol=1e-11,
+        )
+        energy = np.dot(state[3:], state[3:]) / 2 + potential(state[:3])
+        hz = np.cross(state[:3], state[3:])[2]
+        for _ in range(600):
+            state = _rk4(state, 10, True)
+        self.assertAlmostEqual(
+            (np.dot(state[3:], state[3:]) / 2 + potential(state[:3]))
+            / energy, 1, delta=1e-8,
+        )
+        self.assertAlmostEqual(
+            np.cross(state[:3], state[3:])[2] / hz, 1, delta=1e-8,
+        )
+
     def test_invalid_orbit_and_frame(self):
-        for args in ({"h": -1}, {"inc": 181}, {"h": np.nan}):
+        for args in (
+            {"h": -1}, {"inc": 181}, {"h": np.nan},
+            {"step": 0}, {"step": -1}, {"step": np.inf},
+        ):
             with self.assertRaises(ValueError):
                 orbit_position(T, **args)
         with self.assertRaises(ValueError):

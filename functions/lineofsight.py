@@ -5,7 +5,7 @@ from typing import TypedDict
 import numpy as np
 from astropy.time import Time
 
-from .field import Array, R_EARTH_KM, Vector, igrf_field
+from .bfield import Array, R_EARTH_KM, Vector, igrf_field
 
 
 class Ray(TypedDict):
@@ -23,7 +23,7 @@ class Ray(TypedDict):
     amplitude_Tm: float  # Norm of the vector integral [T m]
 
 
-def line_of_sight(
+def los(
     r: Vector, k: Vector, t: str | Time,
     length: float = 10000.0, n: int = 501, report: bool = True,
 ) -> Ray:

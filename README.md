@@ -1,6 +1,6 @@
 # DarkNESS-LE
 
-Solar axion flux, coherent conversion, IGRF-14 fields, and circular J2 orbits.
+Solar axion flux, coherent conversion, IGRF-14 fields, and RK4 orbit propagation.
 Requires Python 3.10+, NumPy 2+, and Astropy. Field, orbit, flux, and conversion
 formulas are implemented locally. Astropy supplies time, ephemerides, and frames.
 
@@ -45,21 +45,35 @@ is approximately 1.70 × 10⁻¹⁷. The solar spectrum uses the CAST (2007) fit
 ## Field and geometry
 
 ```python
-from functions.field import igrf_field
-from functions.lineofsight import line_of_sight
+from functions.bfield import igrf_field
+from functions.lineofsight import los
 from functions.geometry import orbit_position, sun_direction
 
 t = "2026-10-19T00:00:00"  # UTC
 r = orbit_position(t, h=500, inc=97.4)  # ECEF km
 k = sun_direction(t)  # ECEF unit vector toward Sun
 b = igrf_field(r, t, report=False)  # ECEF tesla
-ray = line_of_sight(r, k, t, length=10000, n=501, report=False)
+ray = los(r, k, t, length=10000, n=501, report=False)
 print(ray["amplitude_Tm"])  # |integral B_perp ds| in T m
 ```
 
 Function names and ray dictionary keys are retained. Keyword inputs now use
 short physical names: `e`, `g`, `b`, `length`, `r`, `k`, `t`, `n`, `h`, `inc`,
 `raan`, and `phase`. Units and output shapes are defined in each docstring.
+
+`orbit_position` integrates Cartesian position and velocity with classical RK4,
+using central gravity and optional J2 acceleration (`j2=True` by default).
+The initial state is a two-body circular orbit defined by `h`, `inc`, `raan`,
+and `phase`; J2 then permits radius variations. The J2 axis is fixed along
+GCRS z. Drag, third-body forces, and higher gravity harmonics are omitted.
+
+`step=10.0` sets the maximum integration step in seconds. Steps shorten to
+reach each requested time exactly. Times may be unsorted, repeated, or before
+the epoch; output order and shape match the input. Smaller steps reduce
+integration error; check convergence for the duration and accuracy needed.
+RK4 uses a fixed maximum step and has no automatic error control.
+References: [RK4 tableau](https://www.hipparchus.org/apidocs/org/hipparchus/ode/nonstiff/ClassicalRungeKuttaIntegrator.html)
+and [ESA J2 potential](https://gssc.esa.int/navipedia/index.php/Perturbed_Motion).
 
 IGRF coefficients are bundled in `functions/data/igrf14coeffs.txt`, downloaded
 directly from the [official NOAA/IAGA text file](https://www.ngdc.noaa.gov/IAGA/vmod/coeffs/igrf14coeffs.txt).
