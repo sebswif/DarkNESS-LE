@@ -1,0 +1,71 @@
+MSIS DENSITY REFERENCE
+Prepared: November 2, 2026
+
+This is a short guide for this repository, not a full copy of the official
+documentation. The code uses NRLMSIS 2.1 through pymsis 0.12.
+
+OFFICIAL DOCUMENTATION
+Overview: https://swxtrec.github.io/pymsis/
+Calculation API:
+https://swxtrec.github.io/pymsis/reference/generated/pymsis.msis.calculate.html
+Activity data:
+https://swxtrec.github.io/pymsis/reference/generated/pymsis.utils.get_f107_ap.html
+Source: https://github.com/SWxTREC/pymsis
+
+MODEL AND UNITS
+MSIS estimates atmospheric properties using a model fitted to observations.
+Density varies with height, location, time, and solar/geomagnetic activity.
+Coordinates use WGS84: altitude in km, latitude and longitude in degrees.
+Mass density is in kg/m^3. Species number densities are in 1/m^3;
+temperature is in kelvin. Our wrapper returns mass density only.
+
+ACTIVITY INPUTS
+f107: previous day's solar radio flux [sfu].
+f107a: 81-day mean solar radio flux centered on the requested date [sfu].
+ap: daily geomagnetic activity index.
+Solar flux is at Earth's actual distance from the Sun, not normalized to 1 AU.
+Without supplied activity, pymsis looks up historical values and downloads
+the data if not cached. Dates must be covered by the available history.
+
+REPOSITORY FUNCTION
+File: functions/atmosphere.py
+Signature: air_density(h, lat, lon, t, *, f107=None, f107a=None, ap=None)
+
+h: altitude >= 0 km.
+lat: geodetic latitude between -90 and 90 degrees.
+lon: longitude between -180 and 180 degrees.
+t: UTC ISO timestamp or numpy datetime64. Use UTC without a timezone suffix.
+
+Inputs may be scalars or arrays with compatible shapes. Values are paired
+point by point; scalars repeat to match arrays. Output has the shared shape;
+all-scalar inputs return one float. Heights must be WGS84 heights, not heights
+above the spherical Earth used in the line-of-sight calculation.
+
+Omit all activity inputs for historical lookup. For offline use or dates
+without historical data, supply all three. Each can be a scalar or match the
+coordinate shape. The wrapper uses daily Ap mode, not 3-hour storm indices.
+Assumed activity values are assumptions, not observed values for that date.
+
+EXAMPLES
+Historical activity (may need internet on first use):
+
+    from functions.atmosphere import air_density
+    rho = air_density(400, 40, -105, "2020-01-01T00:00:00")
+
+Altitude profile with explicitly ASSUMED activity (no activity download):
+
+    rho = air_density(
+        [60, 100, 150, 400, 600], 40, -105, "2020-01-01T00:00:00",
+        f107=150, f107a=150, ap=4,
+    )
+
+INSTALLATION
+From the repository directory, using the project's Python environment:
+
+    python -m pip install -e .
+
+RELATED FUNCTIONS
+air_attenuation(rho, mac) returns an intensity loss coefficient in 1/m.
+photon_plasma_mass(rho) returns an effective X-ray photon mass in eV.
+Both still assume dry-air composition. MSIS mass density alone does not
+include the effect of changing upper-atmosphere composition in those helpers.

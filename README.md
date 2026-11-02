@@ -34,7 +34,7 @@ photon_flux = flux * probability  # cm^-2 s^-1 keV^-1
 ```
 
 `b` is the transverse field in tesla and `length` is the path length in metres.
-The conversion model assumes a uniform field, coherent propagation, negligible
+The uniform conversion model assumes a uniform field, coherent propagation, negligible
 absorption, and weak mixing (probability much less than one). It does not include
 finite-mass coherence loss, plasma effects, or a varying geomagnetic field.
 
@@ -91,3 +91,178 @@ The ray's 60 km absorption shell is a modeling cutoff, not an IGRF boundary.
 Tests include the published reference values from
 [NOAA/BGS pyIGRF14](https://www.ngdc.noaa.gov/IAGA/vmod/pyIGRF14.zip),
 coefficient interpolation, dipole scaling, pole continuity, and ray integration.
+
+## Atmosphere and path conversion
+
+`functions/atmosphere.py` provides `air_density(h, lat, lon, t)` in kg/m^3
+using [NRLMSIS 2.1 through pymsis](https://swxtrec.github.io/pymsis/).
+This is an atmosphere model fitted to observations, not direct measurements.
+Inputs are WGS84 altitude in km, geodetic latitude and longitude in degrees,
+and UTC time. Scalars repeat to match arrays; arrays are matched point by
+point. The output has the shared input shape.
+
+By default, pymsis uses historical solar and geomagnetic activity data,
+downloading and caching it on first use. Dates outside the available history
+require explicit activity inputs. For offline or assumed conditions, supply
+all of `f107` (previous day's radio flux in sfu), `f107a` (centered 81-day mean
+in sfu), and `ap` (daily geomagnetic index). For example,
+`air_density([60, 100, 400], 40, -105, "2020-01-01T00:00:00",
+f107=150, f107a=150, ap=4)` uses assumed activity, not observed activity.
+Install the added dependency with `python -m pip install -e .`.
+
+`air_attenuation(rho, mac)` returns the intensity loss coefficient in 1/m,
+using density in kg/m^3 and an energy-specific mass attenuation coefficient
+in cm^2/g. At 4 keV, dry air has `mac=77.88` from
+[NIST](https://physics.nist.gov/PhysRefData/XrayMassCoef/ComTab/air.html).
+`photon_plasma_mass(rho)` returns the effective photon mass in eV using all
+dry-air electrons, appropriate for X-rays well above binding energies and
+away from absorption edges; see
+[van Bibber et al. (1989)](https://doi.org/10.1103/PhysRevD.39.2089).
+
+Use the `ray` from the field example above:
+
+```python
+from functions.atmosphere import air_density, air_attenuation, photon_plasma_mass
+from functions.conversion import conversion_probability_path
+from astropy.coordinates import EarthLocation
+import astropy.units as u
+
+xyz = ray["path_ecef_km"]
+location = EarthLocation.from_geocentric(xyz[:, 0], xyz[:, 1], xyz[:, 2], unit=u.km)
+rho = air_density(location.height.to_value(u.km), location.lat.deg,
+                  location.lon.deg, t)  # historical activity; may download data
+p = conversion_probability_path(
+    s=ray["distance_km"] * 1000,  # m, detector first
+    b=ray["B_perp_ecef_T"],       # signed vectors in the same frame, T
+    e=4.0, g=1e-10, ma=1e-4,     # keV, GeV^-1, eV
+    mg=photon_plasma_mass(rho),   # eV
+    attenuation=air_attenuation(rho, mac=77.88),  # 1/m at 4 keV
+)
+```
+
+The path function includes phase changes, field direction, and photon loss
+between each conversion point and the detector. `mg` and `attenuation` default
+to zero (vacuum); each can be a scalar or one value per path sample. `b` can
+also be a signed scalar field per sample for a fixed transverse direction.
+The result is a dimensionless probability in the weak-conversion limit
+(much less than one). Increase the sample count until the result converges.
+Only the supplied path is included, so `los` still ends at its 60 km cutoff.
+The sampled integral generalizes the constant-medium expression in
+[Davoudiasl & Huber (2006), Eqs. (2)-(3)](https://arxiv.org/pdf/hep-ph/0509293).
+
+MSIS also models changing atmospheric composition. The attenuation and photon
+mass helpers still assume dry-air composition; using MSIS mass density alone
+does not account for composition changes in the upper atmosphere.
+
+## Instrument response
+
+`functions/instrument.py` provides `silicon_qe`, `bare_effective_area`, and
+`lobster_effective_area`, with input types and units in their docstrings.
+Silicon efficiency uses the bundled photoelectric absorption table from
+2 to 50 keV, with log-log interpolation and no extrapolation. The default
+active silicon depth is 250 micrometres. It assumes ideal charge collection;
+filter/window transmission can be supplied separately to the area functions.
+See [NIST XCOM](https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html).
+
+```python
+from functions.instrument import silicon_qe, bare_effective_area, lobster_effective_area
+
+qe = silicon_qe(e=10.0, thickness=250.0)
+bare = bare_effective_area(e=10.0, area=100.0)  # cm^2
+# Illustrative assumptions, not a measured telescope response:
+lobster = lobster_effective_area(
+    e=10.0, area=100.0, reflectivity=0.8,
+    open_fraction=0.6, focus_fraction=0.25,
+)  # cm^2
+```
+
+For the bare detector, `area` is exposed detector area. For the lobster optic,
+it is projected entrance aperture area. The lobster model counts the central
+spot with two reflections, so reflectivity enters squared. `focus_fraction`
+is the geometric fraction of open-pore rays reaching that spot before
+reflection losses; supply it from the actual geometry or calibration.
+Cross arms and unreflected light are excluded. This is a simplified model
+based on [Angel (1979)](https://doi.org/10.1086/157397), not a ray tracer.
+
+## Backgrounds and magnetic cutoff
+
+`functions/background.py` contains three functions:
+
+- `cxb(e)` returns cosmic X-ray photon intensity in photons/cm^2/s/sr/keV,
+  using [Gruber et al. (1999)](https://arxiv.org/abs/astro-ph/9903492).
+  It converts the paper's energy intensity to photon intensity by dividing
+  by energy in keV. Valid inputs are 3 keV to 100 GeV; it rejects lower
+  energies rather than extending the fit into the soft X-ray band.
+- `earth_albedo(e)` returns the dimensionless reflected-CXB ratio from
+  [Churazov et al. (2008), Eq. (9)](https://arxiv.org/abs/astro-ph/0608252),
+  valid from 1 to 1000 keV. For energies at least 3 keV, multiply by `cxb(e)`
+  for reflected photon intensity. This is a full-disk average; it excludes
+  cosmic-ray atmospheric emission, aurora, and sunlight.
+- `particle_background(spectra, exposure)` uses the exposure-weighted
+  measured-background method of
+  [Tawa et al. (2008), Eq. (1)](https://arxiv.org/abs/0803.0616).
+  Supply spectra in counts/s/keV with shape (rigidity bins, energy samples),
+  and the target observation's exposure in seconds per rigidity bin.
+  Output is counts/s/keV per energy sample. Calibration spectra must match
+  the detector, region, and event selection; no universal spectrum is assumed.
+
+`functions/bfield.py` contains `cutoff_rigidity(r, t)` for ECEF positions in
+km and scalar UTC time. It returns GV using a centered, tilted dipole from
+the date's IGRF degree-1 coefficients, with latitude and radius dependence
+as discussed by [Smart & Shea (2005)](https://doi.org/10.1016/j.asr.2004.09.015).
+It is an approximate vertical cutoff, not particle trajectory tracing or
+the Suzaku COR2 calibration. Do not use it as a precise SAA/storm model.
+
+```python
+from functions.background import cxb, earth_albedo, particle_background
+from functions.bfield import cutoff_rigidity
+
+sky = cxb([4, 10, 30])  # photons/cm^2/s/sr/keV
+reflected = earth_albedo([4, 10, 30]) * sky
+rc = cutoff_rigidity([6971.2, 0, 0], "2026-01-01T00:00:00")  # GV
+# Illustrative calibration spectra and target exposures, not measured data:
+nxb = particle_background([[0.01, 0.02], [0.005, 0.01]], [100, 300])
+```
+
+Photon backgrounds require solid angle and photon effective area to predict
+detected count rates. The particle background already represents detector
+counts and must not be multiplied by photon QE or telescope effective area.
+
+## Counts and coupling limits
+
+`functions/sensitivity.py` provides `signal_counts`, `poisson_upper_limit`,
+and `limiting_coupling`. Input types, units, and assumptions are in their
+docstrings. Signal counts integrate the axion flux times conversion
+probability and photon effective area over energy, multiplied by live time.
+For changing orbital conditions, calculate each time interval and sum.
+The energy range below is chosen to stay inside the silicon table.
+
+```python
+from functions.solar_flux import axion_flux
+from functions.conversion import conversion_probability_uniform
+from functions.instrument import bare_effective_area
+from functions.sensitivity import signal_counts, poisson_upper_limit, limiting_coupling
+
+e = np.linspace(2, 10, 501)  # keV
+g = 1e-10  # GeV^-1; use the same g for production and conversion
+flux = axion_flux(e, g)
+p = conversion_probability_uniform(b=3e-5, length=600e3, g=g)
+area = bare_effective_area(e, area=100)  # cm^2, includes QE
+counts = signal_counts(e, flux, p, area, exposure=1e6)
+# Illustrative observation, not real data:
+upper = poisson_upper_limit(n=3, background=2.0, confidence=0.95)
+g_limit = limiting_coupling(upper, counts, g)
+```
+
+The Poisson limit uses a uniform prior for nonnegative signal and assumes
+the expected background is known exactly, following the known-background
+case of [Helene (1983)](https://doi.org/10.1016/0167-5087(83)90709-3).
+It returns signal counts, not signal plus background; zero observed counts
+give 2.996 at 95%. It is an upper credible bound, not a detection significance.
+An expected sensitivity needs an explicitly chosen procedure for possible
+observations; the function does not round background into observed counts.
+
+The coupling limit uses the fourth root of the signal count ratio because
+solar production and weak conversion each scale as coupling squared; see
+[Davoudiasl & Huber, arXiv:0804.3543](https://arxiv.org/abs/0804.3543).
+This simple total-count limit does not reproduce their full time/energy fit.

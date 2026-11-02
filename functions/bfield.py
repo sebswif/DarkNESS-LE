@@ -4,11 +4,49 @@ from pathlib import Path
 
 import numpy as np
 from astropy.time import Time
+from scipy.constants import c
 
 Array = np.ndarray
 Vector = np.ndarray | list | tuple
 R_EARTH_KM = 6371.2
 COEFFS = Path(__file__).with_name("data") / "igrf14coeffs.txt"
+
+
+def cutoff_rigidity(r: Vector, t: str | Time) -> float | Array:
+    """Return approximate vertical geomagnetic cutoff rigidity [GV].
+
+    Inputs: r, numeric list/tuple or NumPy array of ECEF positions [km],
+    shape (3,) or (..., 3), at or above the IGRF reference sphere;
+    t, scalar UTC ISO string or astropy Time, within 1900-2030.
+    Output: float for one position, otherwise array with shape r.shape[:-1].
+
+    Uses the centered, tilted IGRF degree-1 dipole at t:
+    Rc = Rc_equator * (R_EARTH/radius)^2 * cos(magnetic_latitude)^4.
+    Rc_equator = c * B_equator * R_EARTH / 4, converted to GV; about
+    15 GV for Earth's field. Magnetic latitude is relative to the dipole
+    axis, not geographic latitude. This is a vertical Stormer estimate,
+    not a trajectory-derived effective cutoff or Suzaku's COR2 map.
+    Omits higher field terms, external fields, storms, and the partially
+    allowed rigidity band; unsuitable for precise shielding/SAA predictions.
+    Reference: Smart & Shea, Adv. Space Res. 36, 2012-2020 (2005),
+    doi:10.1016/j.asr.2004.09.015.
+    """
+    r = np.asarray(r, dtype=float)
+    if r.ndim < 1 or r.shape[-1] != 3 or not np.isfinite(r).all():
+        raise ValueError("r must contain finite ECEF vectors (..., 3)")
+    radius = np.linalg.norm(r, axis=-1)
+    if np.any(radius < R_EARTH_KM):
+        raise ValueError("r must be at or above the IGRF reference sphere")
+    t = t if isinstance(t, Time) else Time(t, scale="utc")
+    if not t.isscalar:
+        raise ValueError("t must be scalar")
+    g, h = load_igrf(t.utc.decimalyear)
+    axis = np.array([g[1, 1], h[1, 1], g[1, 0]])
+    strength = np.linalg.norm(axis)
+    sin_lat = (r @ (axis / strength)) / radius
+    equator = c * (strength * 1e-9) * (R_EARTH_KM * 1000) / 4 / 1e9
+    rigidity = equator * (R_EARTH_KM / radius)**2 * (1 - np.clip(sin_lat, -1, 1)**2)**2
+    return float(rigidity) if rigidity.ndim == 0 else rigidity
 
 
 def load_igrf(year: float) -> tuple[Array, Array]:
