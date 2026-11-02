@@ -143,12 +143,11 @@ def main():
     ax.annotate("", xy=tail + 1200 * np.array([sx, sy]), xytext=tail,
                 arrowprops=dict(arrowstyle="->", lw=2.5, color="orange"))
     ax.text(*(tail + 1300 * np.array([sx, sy])), " to Sun", color="orange",
-            va="center", zorder=6)
+            va="center", fontsize=12)
     ax.plot([0, 0], [-1.25 * R_EARTH_KM, 1.25 * R_EARTH_KM], color="C0",
             lw=1, ls="-.")
-    ax.text(-0.04 * R_EARTH_KM, 1.20 * R_EARTH_KM, "dipole axis",
-            ha="right", va="top", color="C0", fontsize=12,
-            zorder=6)
+    ax.text(0, 1.26 * R_EARTH_KM, "dipole axis", ha="center", color="C0",
+            fontsize=12)
 
     ax.set(aspect="equal", xlim=(-1.9 * R_EARTH_KM, 0.05 * R_EARTH_KM),
            ylim=(-1.3 * R_EARTH_KM, 1.3 * R_EARTH_KM),
