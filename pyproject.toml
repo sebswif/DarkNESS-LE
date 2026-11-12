@@ -14,10 +14,11 @@ dependencies = [
     "astropy>=6.0",
     "matplotlib>=3.9",
     "pymsis>=0.12,<0.13",
+    "xraylib>=4.2,<5",
 ]
 
 [tool.setuptools]
-packages = ["functions"]
+packages = ["functions", "functions.background"]
 
 [tool.setuptools.package-data]
 functions = ["data/*.txt"]

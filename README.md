@@ -186,7 +186,7 @@ based on [Angel (1979)](https://doi.org/10.1086/157397), not a ray tracer.
 
 ## Backgrounds and magnetic cutoff
 
-`functions/background.py` contains three functions:
+`functions/background/` retains these reference functions:
 
 - `cxb(e)` returns cosmic X-ray photon intensity in photons/cm^2/s/sr/keV,
   using [Gruber et al. (1999)](https://arxiv.org/abs/astro-ph/9903492).
@@ -266,3 +266,91 @@ The coupling limit uses the fourth root of the signal count ratio because
 solar production and weak conversion each scale as coupling squared; see
 [Davoudiasl & Huber, arXiv:0804.3543](https://arxiv.org/abs/0804.3543).
 This simple total-count limit does not reproduce their full time/energy fit.
+
+## Detector counts across an orbit
+
+Install dependencies with `python -m pip install -e .`, including xraylib for
+atomic attenuation and scattering. `simulate_counts` propagates the whole orbit
+and observes during eclipse and atmospheric grazing. A directional response
+callable leaves room for future optics; the example uses bare silicon.
+
+```python
+import numpy as np
+from astropy import units as u
+from astropy.time import Time
+from functions.geometry import MU_EARTH_KM3_S2, R_EQUATOR_KM
+from functions.instrument import bare_effective_area
+from functions.orbit_counts import simulate_counts
+
+e = np.geomspace(3, 20, 64)  # supported combined band: 3-50 keV
+start = Time("2026-10-19T00:00:00", scale="utc")
+period = 2*np.pi*np.sqrt((R_EQUATOR_KM+500)**3/MU_EARTH_KM3_S2)
+seconds = np.append(np.arange(0, period, 30.0), period)
+time_edges = start + seconds*u.s
+
+def response(e, mu):
+    return bare_effective_area(e, area=10, thickness=250)*max(mu, 0)
+
+# ILLUSTRATIVE calibration and activity assumptions, not measured data:
+result = simulate_counts(
+    e, time_edges, response=response, det_area=10, fov=1.0,
+    g=1e-10, ma=0, goes=1e-6, temperature=10, earth_c=0.01,
+    particle_level=1e-3, particle_alpha=0.5,
+    particle_ref=10, particle_min=0.1,
+    lines=[(6.4, 0.1, 1e-4)],
+    orbit=dict(h=500, inc=97.4, epoch=start),
+    activity=dict(f107=150, f107a=150, ap=4),
+)
+print(result["totals"])
+```
+
+`response(e, mu)` returns effective photon area [cm^2], scalar or matching the
+energy grid, including QE. The loop separately enforces the circular field of
+view (`fov` is its half-angle in degrees). Particle events use `det_area` only.
+No uncalibrated source or detector parameters receive implicit normalizations.
+
+`rates` contains differential rates [counts/s/keV], shaped (interval, energy).
+`counts` contains expected counts per interval; `cumulative` accumulates them,
+and `totals` sums the orbit. Components are `signal`, `cxb`, `dark_earth`,
+`solar_direct`, `solar_scattered`, `particle`, `background`, and `total`.
+Background excludes signal; total includes both. No Poisson events are drawn.
+
+Diagnostics include midpoint ECEF positions, `observing`, `live_exposure_s`,
+`tangent_altitude_km`, `earth_fraction`, `solar_visible_fraction` (geometric,
+before absorption), and `cutoff_rigidity_gv`. Geometry uses WGS84. For rays
+passing through solid Earth the reported tangent altitude is a negative
+spherical impact diagnostic, not an interior geodetic altitude.
+Observation requires an Earthward center ray below `grazing=120` km. Other
+intervals retain geometry but collect no counts. `live_fraction` accounts for
+rejected time; no automatic SAA rejection is invented.
+
+Solar, particle, Earth-normalization and activity parameters accept constants
+or one value per interval. Lines accept one calibration list or one per interval.
+Supply all three MSIS activity inputs for offline use; omitting them uses
+historical lookup, potentially downloading data. The positive rigidity floor
+prevents inverse-power divergence near the magnetic poles.
+
+Defaults: 8x24 field-of-view rays, 4x16 uniform solar-disk rays (16 arcmin),
+and <=5-km atmospheric path spacing. Scattering can be expensive. Refine angular,
+path, energy and time sampling before using quantitative results; midpoint time
+integration especially needs fine bins at eclipse contacts and grazing windows.
+The 30-second example is exploratory, not a convergence guarantee. In a checked
+90-km grazing case, two-second bins changed direct solar counts by 6.5% on
+refinement; use one-second or finer bins around the limb and verify convergence
+for the actual configuration. Coarser bins can be retained in deep eclipse.
+Incoming-column interpolation uses `column_tolerance=0.001`, checked adaptively
+at segment midpoints; set zero for direct evaluation of every incoming ray.
+
+`background_budget(e, exposure, components)` now integrates already folded
+detector differential rates. Its former area/fill API and the exponential
+`transmission()` shortcut were removed. `ray_column` provides reusable MSIS
+columns; `solar_scattered` adds separate single-scattered solar intensity.
+
+Direct sunlight uses a finite uniform disk; scattered illumination and the axion
+signal use the Sun center. Scattering includes Rayleigh and Compton continuum
+with recoil. The signal retains the existing 60-km magnetic-path cutoff. Dark
+Earth remains a uniform empirical spectrum, uncertain below 15 keV. The fixed
+xraylib dry-air mixture at MSIS density is an upper-atmosphere approximation.
+No aurora, fluorescence, repeated scattering, SAA/trapped bursts, activation,
+detector redistribution or saturation is modeled. This is a forecasting pipeline,
+not a calibrated complete LEO background prediction.
