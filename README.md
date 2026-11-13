@@ -10,13 +10,16 @@ From this repository directory, in PowerShell:
 
 ```powershell
 python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\python.exe -m functions.solar_flux
 .\.venv\Scripts\python.exe -m functions.conversion
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-On Linux/macOS use `.venv/bin/python` instead.
+On Linux/macOS use `.venv/bin/python` instead. `requirements.txt` mirrors
+the dependencies in `pyproject.toml` plus pytest; change both together.
 
 ## Usage
 
@@ -158,8 +161,10 @@ does not account for composition changes in the upper atmosphere.
 
 `functions/instrument.py` provides `silicon_qe`, `bare_effective_area`, and
 `lobster_effective_area`, with input types and units in their docstrings.
-Silicon efficiency uses the bundled photoelectric absorption table from
-2 to 50 keV, with log-log interpolation and no extrapolation. The default
+Silicon efficiency uses the xraylib photoelectric cross section from
+0.1 to 100 keV, evaluated directly (the 1.839 keV K edge is exact). The
+bundled NIST table `functions/data/SiPhotoElectricMAC.txt` (2–50 keV) is
+kept as the reference that xraylib is tested against. The default
 active silicon depth is 250 micrometres. It assumes ideal charge collection;
 filter/window transmission can be supplied separately to the area functions.
 See [NIST XCOM](https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html).
@@ -183,6 +188,32 @@ is the geometric fraction of open-pore rays reaching that spot before
 reflection losses; supply it from the actual geometry or calibration.
 Cross arms and unreflected light are excluded. This is a simplified model
 based on [Angel (1979)](https://doi.org/10.1086/157397), not a ray tracer.
+
+### Sizing a lobster-eye optic
+
+`functions/lobster.py` builds a square-pore micropore optic from geometry
+and Fresnel reflectance, for an on-axis point source (the Sun). Graze angle
+at aperture position x is arcsin(x/2f); reflection counts per axis follow
+from pore length/width; odd counts in both axes reach the central spot.
+Mirror reflectance uses xraylib optical constants plus a roughness factor.
+Assumptions and references are in the module docstring.
+
+```python
+from functions.lobster import lobster_eye
+
+optic = lobster_eye(
+    e=[1, 2, 3, 5], focal_length=60, aperture=(9, 9),  # keV, cm, cm
+    pore=40, wall=8, length=2.4,                        # um, um, mm
+    material="Ir", roughness=0.0, slope_error=0.0,      # nm, arcmin
+)
+optic["area_focus"]          # central-spot area [cm^2], no detector QE
+optic["live_halfwidth_cm"]   # aperture half-width that reflects well
+optic["spot_mm"]             # focal spot full width
+```
+
+Multiply by `silicon_qe` for detected area. `material=None` gives a perfect
+reflector (upper bound). `lobster_effective_area` in `instrument.py` is the
+older placeholder and ignores focal length.
 
 ## Backgrounds and magnetic cutoff
 

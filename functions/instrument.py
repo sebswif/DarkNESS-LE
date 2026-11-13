@@ -1,9 +1,11 @@
 """Silicon detection efficiency and simple collecting areas."""
 
-from pathlib import Path
-
 import numpy as np
+import xraylib_np
 from numpy.typing import ArrayLike
+
+E_MIN_KEV, E_MAX_KEV = 0.1, 100.0  # silicon_qe energy domain
+_SI = np.array([14])
 
 
 def _fraction(value: ArrayLike, name: str) -> np.ndarray:
@@ -16,28 +18,29 @@ def _fraction(value: ArrayLike, name: str) -> np.ndarray:
 def silicon_qe(e: ArrayLike, thickness: float = 250.0) -> float | np.ndarray:
     """Return the fraction of photons absorbed photoelectrically in silicon.
 
-    Inputs: e, energy [keV], number, list, or NumPy array, 2 to 50 keV;
+    Inputs: e, energy [keV], number, list, or NumPy array, 0.1 to 100 keV;
     thickness, active silicon depth [micrometres], float or int >= 0.
     Output: efficiency from 0 to 1, float or array matching e.
 
     QE = 1 - exp(-mac * rho * thickness), with thickness converted to cm
-    and rho = 2.33 g/cm^3. Uses the existing SiPhotoElectricMAC.txt table
-    (energy in MeV, photoelectric mac in cm^2/g), interpolated in log energy
-    and log mac. Rejects energies outside the table; no extrapolation.
+    and rho = 2.33 g/cm^3. mac is the silicon photoelectric cross section
+    [cm^2/g] from xraylib (CS_Photo), evaluated at each energy, so the
+    K edge at 1.839 keV is exact rather than interpolated across.
+    Checked against the bundled NIST table data/SiPhotoElectricMAC.txt
+    (2-50 keV); below 2 keV a published check is still pending.
     Assumes normal incidence and full charge collection in the active layer.
     Windows, dead layers, charge loss, and fluorescence escape are omitted;
     this is an ideal absorption efficiency, not a calibrated detector response.
-    Reference: NIST XCOM, https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html
+    Reference: xraylib, Schoonjans et al. (2011), doi:10.1016/j.sab.2011.09.011;
+    NIST XCOM, https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html
     Density: https://physics.nist.gov/PhysRefData/XrayMassCoef/tab1.html
     """
     e = np.asarray(e, dtype=float)
     if not np.isfinite(thickness) or thickness < 0:
         raise ValueError("thickness must be finite and >= 0 micrometres")
-    table = np.loadtxt(Path(__file__).with_name("data") / "SiPhotoElectricMAC.txt", skiprows=1)
-    energy, mac = table[:, 0] * 1000, table[:, 1]
-    if not np.isfinite(e).all() or np.any((e < energy[0]) | (e > energy[-1])):
-        raise ValueError(f"e must be finite and within {energy[0]:g}-{energy[-1]:g} keV")
-    coefficient = np.exp(np.interp(np.log(e).ravel(), np.log(energy), np.log(mac))).reshape(e.shape)
+    if not np.isfinite(e).all() or np.any((e < E_MIN_KEV) | (e > E_MAX_KEV)):
+        raise ValueError(f"e must be finite and within {E_MIN_KEV:g}-{E_MAX_KEV:g} keV")
+    coefficient = xraylib_np.CS_Photo(_SI, np.ascontiguousarray(e.ravel()))[0].reshape(e.shape)
     qe = -np.expm1(-coefficient * 2.33 * thickness * 1e-4)
     return float(qe) if qe.ndim == 0 else qe
 
@@ -48,7 +51,7 @@ def bare_effective_area(
 ) -> float | np.ndarray:
     """Return bare silicon detector effective area [cm^2].
 
-    Inputs: e, energy [keV], number/list/NumPy array, 2 to 50;
+    Inputs: e, energy [keV], number/list/NumPy array, 0.1 to 100;
     area, exposed detector area [cm^2], float or int >= 0;
     thickness, active silicon depth [micrometres], float or int >= 0;
     transmission, window/filter transmission [0 to 1], number or array
@@ -72,7 +75,7 @@ def lobster_effective_area(
 ) -> float | np.ndarray:
     """Return a simple two-reflection lobster-eye central-spot area [cm^2].
 
-    Inputs: e, energy [keV], number/list/NumPy array, 2 to 50;
+    Inputs: e, energy [keV], number/list/NumPy array, 0.1 to 100;
     area, projected entrance aperture [cm^2], float or int >= 0;
     reflectivity, probability per wall reflection [0 to 1], number or array;
     open_fraction, fraction of aperture not blocked by pore walls [0 to 1],
