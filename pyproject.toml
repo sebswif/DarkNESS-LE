@@ -22,3 +22,8 @@ packages = ["functions", "functions.background"]
 
 [tool.setuptools.package-data]
 functions = ["data/*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["pytests"]
+pythonpath = ["."]
+markers = ["reference: needs a published reference value (not yet sourced)"]

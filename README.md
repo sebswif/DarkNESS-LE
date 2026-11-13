@@ -10,13 +10,16 @@ From this repository directory, in PowerShell:
 
 ```powershell
 python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\python.exe -m functions.solar_flux
 .\.venv\Scripts\python.exe -m functions.conversion
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-On Linux/macOS use `.venv/bin/python` instead.
+On Linux/macOS use `.venv/bin/python` instead. `requirements.txt` mirrors
+the dependencies in `pyproject.toml` plus pytest; change both together.
 
 ## Usage
 
