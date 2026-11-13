@@ -18,7 +18,8 @@
 | NIST XrayMassCoef (dry air) | atmosphere | pending |
 | NRLMSIS 2.1 (pymsis) | atmosphere | pending |
 | van Bibber et al. (1989), doi:10.1103/PhysRevD.39.2089 | atmosphere (plasma mass) | pending |
-| Gruber et al. (1999), astro-ph/9903492 | background (CXB) | pending |
+| Gruber et al. (1999), astro-ph/9903492 | background (CXB ≥ 3 keV) | pending |
+| De Luca & Molendi, A&A 419, 837 (2004) | background (CXB 1–3 keV slope) | pending |
 | Churazov et al. (2008), astro-ph/0608252 | background (albedo) | pending |
 | Ajello et al. (2008), arXiv:0808.3377 | background (dark Earth) | pending |
 | Tawa et al. (2008), arXiv:0803.0616 | background (particle) | pending |

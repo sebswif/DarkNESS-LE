@@ -1,0 +1,123 @@
+{
+  "settings": {
+    "epochs": 4,
+    "step": 60.0,
+    "emin": 1.0,
+    "emax": 10.0,
+    "ne": 32,
+    "g": 1e-10,
+    "goes": 0.0,
+    "h": 500.0,
+    "inc": 51.6,
+    "years": 1.0,
+    "live": 1.0,
+    "thickness": 50.0,
+    "out": "output/trade_results.json"
+  },
+  "results": {
+    "bare 10 cm2, 5 deg": {
+      "fov_deg": 5.0,
+      "particle_area_cm2": 10,
+      "counts_per_orbit": {
+        "signal": 0.011081300598709352,
+        "cxb": 113.31120594773583,
+        "dark_earth": 0.013332700939001444,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 388.5297480720252,
+        "background": 501.85428672070003,
+        "total": 501.8653680212987
+      },
+      "counts_mission": {
+        "signal": 61.599542928764286,
+        "cxb": 629882.6056483443,
+        "dark_earth": 74.11479153846358,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 2159787.5341683463,
+        "background": 2789744.254608229,
+        "total": 2789805.8541511577
+      },
+      "upper_limit_counts": 3275.187385396798,
+      "g_limit": 2.7003164725736657e-10
+    },
+    "lobster 6U (2x3x1) f=30": {
+      "fov_deg": 7.233044213093359,
+      "particle_area_cm2": 0.011030227112321513,
+      "counts_per_orbit": {
+        "signal": 0.0007455997816511626,
+        "cxb": 0.013077242667932504,
+        "dark_earth": 3.728079884254583e-07,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 0.42855713611275,
+        "background": 0.4416347515886709,
+        "total": 0.44238035137032206
+      },
+      "counts_mission": {
+        "signal": 4.144694510213667,
+        "cxb": 72.69473144758834,
+        "dark_earth": 0.0020723922686363195,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 2382.294701623772,
+        "background": 2454.991505463629,
+        "total": 2459.1361999738424
+      },
+      "upper_limit_counts": 98.84866158305819,
+      "g_limit": 2.20988445452422e-10
+    },
+    "lobster 8U (2x4x1) f=40": {
+      "fov_deg": 5.4232059202093055,
+      "particle_area_cm2": 0.019559514866349346,
+      "counts_per_orbit": {
+        "signal": 0.0013253698329199566,
+        "cxb": 0.018460925204975817,
+        "dark_earth": 6.630327298833541e-07,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 0.7599453383433743,
+        "background": 0.77840692658108,
+        "total": 0.7797322964140001
+      },
+      "counts_mission": {
+        "signal": 7.367562606229718,
+        "cxb": 102.62193905299016,
+        "dark_earth": 0.0036857147537701852,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 4224.439638272176,
+        "background": 4327.06526303992,
+        "total": 4334.43282564615
+      },
+      "upper_limit_counts": 130.6117461853619,
+      "g_limit": 2.0519397287777497e-10
+    },
+    "lobster linear 6U f=60": {
+      "fov_deg": 2.4246070567289646,
+      "particle_area_cm2": 0.04392890844928604,
+      "counts_per_orbit": {
+        "signal": 0.0029264909397532643,
+        "cxb": 0.021056259079941568,
+        "dark_earth": 1.4956944875389158e-06,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 1.7067687732880163,
+        "background": 1.7278265280624456,
+        "total": 1.7307530190021987
+      },
+      "counts_mission": {
+        "signal": 16.26799152934875,
+        "cxb": 117.04907050938701,
+        "dark_earth": 0.008314375733494719,
+        "solar_direct": 0.0,
+        "solar_scattered": 0.0,
+        "particle": 9487.710885839051,
+        "background": 9604.768270724173,
+        "total": 9621.036262253521
+      },
+      "upper_limit_counts": 193.9638175480691,
+      "g_limit": 1.858218144451546e-10
+    }
+  }
+}

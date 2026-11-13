@@ -61,6 +61,7 @@ def simulate_counts(
     e, time_edges, *, response: Callable, det_area: float, fov: float,
     g: float, goes, temperature, earth_c, particle_level,
     particle_alpha, particle_ref, particle_min, lines=(), ma: float = 0.0,
+    core: tuple | None = None,
     orbit: dict | None = None, activity: dict | None = None,
     live_fraction=1.0, grazing: float = 120.0, solar_radius: float = 16.0,
     top: float = 1000.0, path_step: float = 5.0,
@@ -71,12 +72,17 @@ def simulate_counts(
     """Return time-resolved expected signal and background detector counts.
 
     e: positive increasing energy grid [keV], (ne,), >=2; restricted to
-    3-50 keV (existing CXB/Si domain). time_edges: UTC Time or ISO sequence,
+    1-50 keV (CXB/Si domain). time_edges: UTC Time or ISO sequence,
     (nt+1,), strictly increasing; midpoint rates are used in each interval.
     response(e, mu): effective photon area [cm^2], scalar or (ne,), already
     including QE; mu=cos(angle to Sun-tracking boresight). Hard circular FOV
     is applied here. det_area: detector region area [cm^2]; fov: half-angle
     [deg], (0,90]. g [GeV^-1], ma [eV]. No saturation/dead-time model.
+    core: optional (solid angle [sr], area [cm^2] (ne,)) narrow on-axis
+    term (e.g. a focusing optic's spot), applied to the boresight for
+    diffuse sources and solar-disk points inside it, and added to the
+    signal area. payload.bare_ccd/lobster_ccd supply response, det_area,
+    fov and core together.
 
     goes [W/m^2], temperature [MK], earth_c [ph/cm^2/s/sr/keV],
     particle_level [counts/cm^2/s/keV], particle_alpha (>=0), particle_ref
@@ -115,8 +121,8 @@ def simulate_counts(
     """
     e = np.asarray(e, float)
     if (e.ndim != 1 or e.size < 2 or not np.isfinite(e).all()
-            or np.any((e < 3) | (e > 50)) or np.any(np.diff(e) <= 0)):
-        raise ValueError("e must be increasing finite (ne,), >=2 samples in 3-50 keV")
+            or np.any((e < 1) | (e > 50)) or np.any(np.diff(e) <= 0)):
+        raise ValueError("e must be increasing finite (ne,), >=2 samples in 1-50 keV")
     edges = Time(time_edges, scale="utc")
     if edges.ndim != 1 or len(edges) < 2 or np.any(~np.isfinite(edges.jd)):
         raise ValueError("time_edges must be a finite UTC sequence of >=2 times")
@@ -161,6 +167,15 @@ def simulate_counts(
     disk_weights /= disk_weights.sum()
     area_disk = _areas(response, e, disk@ref, fov_angle)
     area_center = _areas(response, e, [1.0], fov_angle)[0]
+    omega_all, area_all = omega, area_view
+    if core is not None:
+        omega_core, area_core = float(core[0]), np.broadcast_to(np.asarray(core[1], float), e.shape)
+        if not 0 < omega_core < 2*np.pi or not np.isfinite(area_core).all() or np.any(area_core < 0):
+            raise ValueError("core must be (solid angle in (0, 2pi) sr, finite area >= 0 cm^2)")
+        area_center = area_center + area_core
+        area_disk = area_disk + np.outer(disk@ref >= 1 - omega_core/(2*np.pi), area_core)
+        omega_all = np.append(omega, omega_core)
+        area_all = np.vstack([area_view, area_core])
     mu = _mac(e)
     mids = edges[:-1]+durations/2*u.s
     orbit_options = dict(h=500.0, inc=97.4, epoch=edges[0])
@@ -176,10 +191,12 @@ def simulate_counts(
     for i, (r, sun, t) in enumerate(zip(positions, suns, mids)):
         act = {k: v[i] for k, v in activity_series.items()}
         views, _ = _cone(sun, fov_angle, fov_radial, fov_azimuth)
+        if core is not None:
+            views = np.vstack([views, sun])  # boresight carries the core term
         solar_views, _ = _cone(sun, disk_angle, solar_radial, solar_azimuth)
         covered = np.array([_geometry(r, direction, top)[2] for direction in views])
         solar_blocked = np.array([_geometry(r, direction, top)[2] for direction in solar_views])
-        earth_fill[i] = omega@covered/omega.sum()
+        earth_fill[i] = omega@covered[:len(omega)]/omega.sum()
         visible[i] = disk_weights@(~solar_blocked)
         tangent[i] = _tangent(r, sun)
         rigidity[i] = cutoff_rigidity(r, t)
@@ -190,8 +207,8 @@ def simulate_counts(
         paths = ray_column(r, views, t, activity=act, top=top, step=path_step)
         transmission = np.exp(-paths["column"][:, None]*mu)
         transmission[covered] = 0
-        rates["cxb"][i] = np.sum(omega[:, None]*area_view*transmission, axis=0)*cxb(e)
-        rates["dark_earth"][i] = np.sum(omega[covered, None]*area_view[covered], axis=0)*dark_earth(e, p["earth_c"])
+        rates["cxb"][i] = np.sum(omega_all[:, None]*area_all*transmission, axis=0)*cxb(e)
+        rates["dark_earth"][i] = np.sum(omega_all[covered, None]*area_all[covered], axis=0)*dark_earth(e, p["earth_c"])
         if p["goes"] > 0:
             solar_paths = ray_column(r, solar_views, t, activity=act, top=top, step=path_step)
             direct = np.exp(-solar_paths["column"][:, None]*mu)
@@ -201,7 +218,7 @@ def simulate_counts(
             scattered = solar_scattered(e, r, sun, views, t, p["goes"], p["temperature"],
                                          activity=act, top=top, step=path_step, paths=paths["paths"],
                                          column_tolerance=column_tolerance)
-            rates["solar_scattered"][i] = np.sum(omega[:, None]*area_view*scattered, axis=0)
+            rates["solar_scattered"][i] = np.sum(omega_all[:, None]*area_all*scattered, axis=0)
         scale = (max(rigidity[i], p["particle_min"])/p["particle_ref"])**-p["particle_alpha"]
         rates["particle"][i] = det_area*nxb(e, p["particle_level"], lines[i], scale)
         if g != 0 and np.any(area_center):

@@ -24,7 +24,9 @@ Details and full assumptions are in each docstring.
   Spot ≈ hypot(d, 2f·slope_error). No off-axis, shear, tile gaps, or QE.
   Built independently of GECOSAX; its 1.5 cm² (6U, 30 cm) agrees with our
   0.8–1.4 cm² range (ideal Ir, 2026-11-12 demo).
-- **background/models** — CXB (Gruber 1999, ≥ 3 keV), Earth albedo (Churazov
+- **background/models** — CXB (Gruber 1999 ≥ 3 keV; 1–3 keV photon index
+  1.41 power law, De Luca & Molendi 2004, matched to Gruber at 3 keV —
+  their own normalization is ~40% higher there), Earth albedo (Churazov
   2008), dark Earth (Ajello 2008 shape, caller-supplied normalization),
   particle background (flat + Gaussian lines, caller-calibrated), solar
   thermal continuum normalized to GOES flux (1 W/m² = 6.2415×10¹¹
@@ -34,5 +36,11 @@ Details and full assumptions are in each docstring.
 - **sensitivity** — trapezoid counts, Helene (1983) Poisson upper limit,
   g limit = g × (limit / counts)^¼.
 - **orbit_counts** — ties all of the above over an orbit; observes only in
-  eclipse with Sun tangent altitude < 120 km.
+  eclipse with Sun tangent altitude < 120 km. Optional `core` (solid angle,
+  area) adds a narrow on-axis term on the boresight.
+- **payload** — `bare_ccd` (collimated CCD, particles over whole CCD) and
+  `lobster_ccd` (square extraction region of side s: focused core with
+  Gaussian-spot enclosed fraction; arm/unfocused photons spread over the
+  aperture footprint, fractions 2S/(DxDy) and S/(DxDy) per direction;
+  particles over S only). Returns `simulate_counts` keyword arguments.
 - **physics** — legacy duplicate of `instrument.silicon_qe`; slated for removal.

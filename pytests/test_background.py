@@ -22,9 +22,17 @@ def test_cxb_positive_and_falling():
     assert np.all(sky > 0) and np.all(np.diff(sky) < 0)
 
 
-def test_cxb_rejects_soft_energies():
+def test_cxb_rejects_below_1kev():
     with pytest.raises(ValueError):
-        cxb(1.0)
+        cxb(0.5)
+
+
+def test_cxb_continuous_at_3kev():
+    assert cxb(3 - 1e-9) == pytest.approx(cxb(3.0), rel=1e-6)
+
+
+def test_cxb_soft_slope_is_photon_index_141():
+    assert cxb(1.0) / cxb(2.0) == pytest.approx(2**1.41)
 
 
 def test_dark_earth_half_at_break():
