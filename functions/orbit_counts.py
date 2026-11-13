@@ -72,7 +72,7 @@ def simulate_counts(
     """Return time-resolved expected signal and background detector counts.
 
     e: positive increasing energy grid [keV], (ne,), >=2; restricted to
-    3-50 keV (existing CXB/Si domain). time_edges: UTC Time or ISO sequence,
+    1-50 keV (CXB/Si domain). time_edges: UTC Time or ISO sequence,
     (nt+1,), strictly increasing; midpoint rates are used in each interval.
     response(e, mu): effective photon area [cm^2], scalar or (ne,), already
     including QE; mu=cos(angle to Sun-tracking boresight). Hard circular FOV
@@ -121,8 +121,8 @@ def simulate_counts(
     """
     e = np.asarray(e, float)
     if (e.ndim != 1 or e.size < 2 or not np.isfinite(e).all()
-            or np.any((e < 3) | (e > 50)) or np.any(np.diff(e) <= 0)):
-        raise ValueError("e must be increasing finite (ne,), >=2 samples in 3-50 keV")
+            or np.any((e < 1) | (e > 50)) or np.any(np.diff(e) <= 0)):
+        raise ValueError("e must be increasing finite (ne,), >=2 samples in 1-50 keV")
     edges = Time(time_edges, scale="utc")
     if edges.ndim != 1 or len(edges) < 2 or np.any(~np.isfinite(edges.jd)):
         raise ValueError("time_edges must be a finite UTC sequence of >=2 times")

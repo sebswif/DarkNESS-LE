@@ -222,8 +222,9 @@ older placeholder and ignores focal length.
 - `cxb(e)` returns cosmic X-ray photon intensity in photons/cm^2/s/sr/keV,
   using [Gruber et al. (1999)](https://arxiv.org/abs/astro-ph/9903492).
   It converts the paper's energy intensity to photon intensity by dividing
-  by energy in keV. Valid inputs are 3 keV to 100 GeV; it rejects lower
-  energies rather than extending the fit into the soft X-ray band.
+  by energy in keV. From 1 to 3 keV it uses a photon index 1.41 power law
+  (De Luca & Molendi 2004) matched to Gruber at 3 keV. Valid inputs are
+  1 keV to 100 GeV; below 1 keV Galactic soft emission (not modelled) matters.
 - `earth_albedo(e)` returns the dimensionless reflected-CXB ratio from
   [Churazov et al. (2008), Eq. (9)](https://arxiv.org/abs/astro-ph/0608252),
   valid from 1 to 1000 keV. For energies at least 3 keV, multiply by `cxb(e)`
@@ -298,6 +299,21 @@ solar production and weak conversion each scale as coupling squared; see
 [Davoudiasl & Huber, arXiv:0804.3543](https://arxiv.org/abs/0804.3543).
 This simple total-count limit does not reproduce their full time/energy fit.
 
+## Trade-study simulation
+
+`simulate.py` ties every model together for the bare and lobster payloads
+(6U, 8U, linear 6U): one orbit per epoch, epochs spread over a year,
+scaled to the mission, then a Poisson upper limit and coupling limit.
+
+```bash
+python simulate.py --epochs 1 --step 120   # quick look, ~30 s
+python simulate.py                         # 4 epochs, 60 s bins, ~4 min
+```
+
+Results go to `output/trade_results.json`. Backgrounds and optic quality
+are illustrative inputs. `--goes` > 0 adds solar direct and scattered
+light but is very slow (over 10 minutes per orbit).
+
 ## Detector counts across an orbit
 
 Install dependencies with `python -m pip install -e .`, including xraylib for
@@ -313,7 +329,7 @@ from functions.geometry import MU_EARTH_KM3_S2, R_EQUATOR_KM
 from functions.instrument import bare_effective_area
 from functions.orbit_counts import simulate_counts
 
-e = np.geomspace(3, 20, 64)  # supported combined band: 3-50 keV
+e = np.geomspace(3, 20, 64)  # supported combined band: 1-50 keV
 start = Time("2026-10-19T00:00:00", scale="utc")
 period = 2*np.pi*np.sqrt((R_EQUATOR_KM+500)**3/MU_EARTH_KM3_S2)
 seconds = np.append(np.arange(0, period, 30.0), period)

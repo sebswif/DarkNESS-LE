@@ -113,19 +113,26 @@ def solar_spectrum(
 def cxb(e: ArrayLike) -> float | np.ndarray:
     """Return cosmic X-ray photon intensity [photons/cm^2/s/sr/keV].
 
-    Input: e, energy [keV], number, list, or NumPy array, 3 to 1e8 keV.
-    Output: float or NumPy array matching e. Uses Gruber's piecewise fit,
-    divided by e to convert the published ENERGY intensity to photons.
-    Rejects energies below 3 keV; this fit is not a soft X-ray foreground
-    model. No Galactic emission, absorption, or source masking is included.
+    Input: e, energy [keV], number, list, or NumPy array, 1 to 1e8 keV.
+    Output: float or NumPy array matching e. From 3 keV up, Gruber's
+    piecewise fit, divided by e to convert the published ENERGY intensity
+    to photons. From 1 to 3 keV, a photon power law of index 1.41 (De Luca
+    & Molendi 2004, XMM 2-10 keV), normalized to Gruber at 3 keV so the
+    spectrum is continuous; their own normalization is ~40% higher there,
+    a systematic to bracket. Rejects energies below 1 keV, where Galactic
+    soft emission (not modelled) becomes important. No Galactic emission,
+    absorption, or source masking is included.
     Multiply by sky solid angle [sr] and photon effective area [cm^2] to
     get counts/s/keV for a uniform response, then integrate energy/time.
-    Reference: Gruber et al. (1999), https://arxiv.org/abs/astro-ph/9903492.
+    References: Gruber et al. (1999), https://arxiv.org/abs/astro-ph/9903492;
+    De Luca & Molendi, A&A 419, 837 (2004).
     """
     e = np.asarray(e, dtype=float)
-    if not np.isfinite(e).all() or np.any((e < 3) | (e > 1e8)):
-        raise ValueError("e must be finite and between 3 and 1e8 keV")
-    low = 7.877 * e**-0.29 * np.exp(-e / 41.13)
+    if not np.isfinite(e).all() or np.any((e < 1) | (e > 1e8)):
+        raise ValueError("e must be finite and between 1 and 1e8 keV")
+    gruber_3kev = 7.877 * 3**-0.29 * np.exp(-3 / 41.13)  # energy intensity at 3 keV
+    soft = gruber_3kev * (e / 3)**(1 - 1.41)  # energy intensity of the photon index 1.41 law
+    low = np.where(e < 3, soft, 7.877 * e**-0.29 * np.exp(-e / 41.13))
     high = (0.0259 * (e / 60)**-5.5 + 0.504 * (e / 60)**-1.58
             + 0.0288 * (e / 60)**-1.05)
     intensity = np.where(e <= 60, low, high) / e

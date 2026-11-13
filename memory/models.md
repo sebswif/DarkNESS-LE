@@ -24,7 +24,9 @@ Details and full assumptions are in each docstring.
   Spot ≈ hypot(d, 2f·slope_error). No off-axis, shear, tile gaps, or QE.
   Built independently of GECOSAX; its 1.5 cm² (6U, 30 cm) agrees with our
   0.8–1.4 cm² range (ideal Ir, 2026-11-12 demo).
-- **background/models** — CXB (Gruber 1999, ≥ 3 keV), Earth albedo (Churazov
+- **background/models** — CXB (Gruber 1999 ≥ 3 keV; 1–3 keV photon index
+  1.41 power law, De Luca & Molendi 2004, matched to Gruber at 3 keV —
+  their own normalization is ~40% higher there), Earth albedo (Churazov
   2008), dark Earth (Ajello 2008 shape, caller-supplied normalization),
   particle background (flat + Gaussian lines, caller-calibrated), solar
   thermal continuum normalized to GOES flux (1 W/m² = 6.2415×10¹¹

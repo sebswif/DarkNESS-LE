@@ -37,6 +37,13 @@ ct/cm²/s/keV; lobster slope error 3′, region 2× spot): S/√B per orbit
 is 2.4e-4 for a bare 10 cm² CCD and 3.4e-4 / 4.6e-4 / 6.9e-4 for the
 6U / 8U / linear 6U lobsters. Particles dominate every background.
 
+First full-chain run (2026-11-13, `simulate.py` defaults: 1–10 keV,
+500 km / 51.6°, 4 epochs, 60 s bins, 1 yr, no solar terms, illustrative
+backgrounds, lobster slope error 3′): 95% g limits 2.7e-10 (bare 10 cm²),
+2.2e-10 (6U), 2.05e-10 (8U), 1.86e-10 (linear 6U) GeV⁻¹. Same scale as
+GECOSAX (bare 2.0–2.4e-10, lobster 1.75e-10). Not converged in time or
+angular sampling.
+
 **Prior work:** the sibling project `../gecosax-cubesat` has a validated
 optics trade (bare vs lobster at f ≤ 100 cm) and a geometric lobster model.
 
