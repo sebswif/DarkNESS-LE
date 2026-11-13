@@ -7,6 +7,9 @@ No grid, integration, instrument class, or zero-valued stubs are needed.
 import numpy as np
 from numpy.typing import ArrayLike
 
+# 1 W/m^2 = 1 J/s/m^2 = 6.241509074e15 keV/s / 1e4 cm^2.
+W_M2_TO_KEV_CM2_S = 6.241509074e11
+
 
 def dark_earth(
     e: ArrayLike, c: float, eb: float = 33.7,
@@ -81,7 +84,7 @@ def solar_spectrum(
     e0 [keV] > 0; gamma, finite tail index > 0.
     Thermal F=N/e*exp(-e/kT), kT=0.08617333262*temperature keV.
     N is normalized analytically over 1.55-12.4 keV, using
-    1 W/m^2 = 6.241509074e5 keV/cm^2/s. Tail is f0*(e/e0)**-gamma
+    1 W/m^2 = 6.241509074e11 keV/cm^2/s. Tail is f0*(e/e0)**-gamma
     for e >= e0 and zero below. GOES normalizes only the thermal term.
     This is a continuum proxy, omitting solar lines and GOES response;
     the optional tail adds energy beyond the specified thermal flux.
@@ -99,7 +102,7 @@ def solar_spectrum(
     if goes > 0:
         with np.errstate(over="raise"):
             try:
-                result = goes * 6.241509074e5 / norm / e * np.exp((1.55 - e) / kt)
+                result = goes * W_M2_TO_KEV_CM2_S / norm / e * np.exp((1.55 - e) / kt)
             except FloatingPointError as exc:
                 raise ValueError("thermal extrapolation overflows; increase temperature or energy") from exc
     tail = e >= e0

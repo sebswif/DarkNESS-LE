@@ -1,11 +1,18 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from functions.instrument import bare_effective_area, lobster_effective_area, silicon_qe
+pytest.importorskip("xraylib")
+import xraylib  # noqa: E402
+
+from functions.instrument import bare_effective_area, lobster_effective_area, silicon_qe  # noqa: E402
+
+NIST_TABLE = Path(__file__).parents[1] / "functions" / "data" / "SiPhotoElectricMAC.txt"
 
 
 def test_qe_between_zero_and_one():
-    qe = silicon_qe(np.linspace(2, 50, 20))
+    qe = silicon_qe(np.geomspace(0.1, 100, 50))
     assert np.all((qe >= 0) & (qe <= 1))
 
 
@@ -17,9 +24,15 @@ def test_qe_grows_with_thickness():
     assert silicon_qe(10.0, thickness=500) > silicon_qe(10.0, thickness=250)
 
 
-def test_qe_rejects_energy_outside_table():
+def test_qe_rejects_energy_outside_domain():
     with pytest.raises(ValueError):
-        silicon_qe(1.0)
+        silicon_qe(0.05)
+
+
+def test_qe_jumps_at_k_edge():
+    # Thin layer so QE is not saturated on either side of 1.839 keV.
+    below, above = silicon_qe([1.83, 1.85], thickness=0.5)
+    assert above > 5 * below
 
 
 def test_bare_area_is_area_times_qe():
@@ -34,6 +47,14 @@ def test_lobster_area_formula():
 
 
 @pytest.mark.reference
-@pytest.mark.skip(reason="needs published Si QE value (e.g. NIST XCOM at 10 keV, 250 um)")
-def test_qe_matches_published():
+def test_photoelectric_matches_nist_table():
+    # Bundled NIST XCOM silicon photoelectric table, 2-50 keV.
+    table = np.loadtxt(NIST_TABLE, skiprows=1)
+    for e_mev, mac in table:
+        assert xraylib.CS_Photo(14, e_mev * 1000) == pytest.approx(mac, rel=0.01)
+
+
+@pytest.mark.reference
+@pytest.mark.skip(reason="needs a published Si photoabsorption value below 2 keV (NIST XCOM 1-1.8 keV, or Henke/CXRO)")
+def test_photoelectric_matches_published_below_2kev():
     pass

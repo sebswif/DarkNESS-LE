@@ -3,7 +3,9 @@
 - **No hidden normalizations.** Uncalibrated inputs (dark Earth, particle
   level, solar GOES, lines) must be passed in explicitly.
 - **Reject, don't extrapolate.** Fits and tables raise outside their valid
-  range (e.g. CXB < 3 keV, Si table outside 2–50 keV, IGRF outside 1900–2030).
+  range (e.g. CXB < 3 keV, Si QE outside 0.1–100 keV, IGRF outside 1900–2030).
+- **Cross sections from xraylib**, checked against bundled NIST tables;
+  the tables are test references, not inputs.
 - **Weak mixing only.** Conversion assumes P ≪ 1.
 - **Same g everywhere.** Production and conversion use the same coupling.
 - **Effective area includes QE.** Never apply QE twice; never apply photon

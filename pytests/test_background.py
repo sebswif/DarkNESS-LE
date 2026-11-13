@@ -5,8 +5,16 @@ import pytest
 pytest.importorskip("xraylib")
 pytest.importorskip("pymsis")
 from functions.background import (  # noqa: E402
-    background_budget, cxb, dark_earth, nxb, particle_background,
+    background_budget, cxb, dark_earth, nxb, particle_background, solar_spectrum,
 )
+
+
+def test_solar_energy_flux_matches_goes():
+    # Thermal energy flux over GOES 1-8 Angstrom (1.55-12.4 keV) must return goes.
+    e = np.linspace(1.55, 12.4, 20001)
+    keV_cm2_s = np.trapezoid(e * solar_spectrum(e, goes=1e-6, temperature=10), e)
+    w_m2 = keV_cm2_s * 1.602176634e-16 * 1e4
+    assert w_m2 == pytest.approx(1e-6, rel=1e-6)
 
 
 def test_cxb_positive_and_falling():
