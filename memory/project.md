@@ -31,6 +31,12 @@ area, no QE): 6U 20×9 cm → 0.8 cm²; 8U 20×9 cm → 1.4 cm²; linear 6U
 9×9 cm → 2.9 cm². Area grows ~f²; at 2–3 keV only ~2–3 cm of aperture
 half-width reflects, so wide apertures are mostly dead glass.
 
+First orbit pass (2026-11-12, one 500 km / 51.6° orbit, 3–10 keV, 60 s
+bins, illustrative backgrounds incl. XIS-level particles 1.26e-3
+ct/cm²/s/keV; lobster slope error 3′, region 2× spot): S/√B per orbit
+is 2.4e-4 for a bare 10 cm² CCD and 3.4e-4 / 4.6e-4 / 6.9e-4 for the
+6U / 8U / linear 6U lobsters. Particles dominate every background.
+
 **Prior work:** the sibling project `../gecosax-cubesat` has a validated
 optics trade (bare vs lobster at f ≤ 100 cm) and a geometric lobster model.
 

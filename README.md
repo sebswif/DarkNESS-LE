@@ -335,6 +335,12 @@ result = simulate_counts(
 print(result["totals"])
 ```
 
+For the trade study, `functions/payload.py` supplies `response`, `det_area`,
+`fov` and `core` together: `simulate_counts(e, time_edges, **bare_ccd(10, 5.0), ...)`
+or `**lobster_ccd(e, optic)` with `optic` the `lobster_eye` keywords. `core`
+carries the lobster's focused spot (too narrow for the FOV quadrature);
+particle background is then counted only in the spot's extraction region.
+
 `response(e, mu)` returns effective photon area [cm^2], scalar or matching the
 energy grid, including QE. The loop separately enforces the circular field of
 view (`fov` is its half-angle in degrees). Particle events use `det_area` only.

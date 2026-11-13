@@ -34,5 +34,11 @@ Details and full assumptions are in each docstring.
 - **sensitivity** — trapezoid counts, Helene (1983) Poisson upper limit,
   g limit = g × (limit / counts)^¼.
 - **orbit_counts** — ties all of the above over an orbit; observes only in
-  eclipse with Sun tangent altitude < 120 km.
+  eclipse with Sun tangent altitude < 120 km. Optional `core` (solid angle,
+  area) adds a narrow on-axis term on the boresight.
+- **payload** — `bare_ccd` (collimated CCD, particles over whole CCD) and
+  `lobster_ccd` (square extraction region of side s: focused core with
+  Gaussian-spot enclosed fraction; arm/unfocused photons spread over the
+  aperture footprint, fractions 2S/(DxDy) and S/(DxDy) per direction;
+  particles over S only). Returns `simulate_counts` keyword arguments.
 - **physics** — legacy duplicate of `instrument.silicon_qe`; slated for removal.
