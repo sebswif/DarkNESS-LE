@@ -310,6 +310,15 @@ python simulate.py --epochs 1 --step 120   # quick look, ~30 s
 python simulate.py                         # 4 epochs, 60 s bins, ~4 min
 ```
 
+The bare payload is `aperture_ccd`: a 10 cm² CCD behind a circular
+aperture in a plate (DarkNESS-style), 10° half cone where the aperture's
+shadow fully leaves the CCD (plate 20 cm above the CCD, half response at 4°).
+
+Figures: `python output/fig_trade.py` (after `simulate.py`) writes
+`fig_area.png` (axion spectrum and signal area), `fig_orbit.png` (one-orbit
+timeline), `fig_background.png` (background components vs signal) and
+`fig_limits.png` (coupling limits vs CAST 2017) to `output/`.
+
 Results go to `output/trade_results.json`. Backgrounds and optic quality
 are illustrative inputs. `--goes` > 0 adds solar direct and scattered
 light but is very slow (over 10 minutes per orbit).

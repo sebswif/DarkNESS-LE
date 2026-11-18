@@ -3,7 +3,19 @@ import pytest
 
 pytest.importorskip("xraylib")
 from functions.instrument import silicon_qe  # noqa: E402
-from functions.payload import bare_ccd, lobster_ccd  # noqa: E402
+from functions.payload import aperture_ccd, bare_ccd, lobster_ccd  # noqa: E402
+
+
+def test_aperture_full_on_axis_and_zero_at_edge():
+    p = aperture_ccd(area=10, fov=10, thickness=50)
+    assert p["response"](4.0, 1.0) == pytest.approx(10 * silicon_qe(4.0, 50))
+    assert p["response"](4.0, np.cos(np.deg2rad(10.001))) == 0
+
+
+def test_aperture_plate_height():
+    # Equal aperture and CCD radius b: h = 2b / tan(fov).
+    p = aperture_ccd(area=np.pi, fov=45)
+    assert p["plate_height_cm"] == pytest.approx(2.0)
 
 OPTIC = dict(focal_length=60, aperture=9, pore=40, wall=8, length=2.4, slope_error=3.0)
 

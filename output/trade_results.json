@@ -15,31 +15,31 @@
     "out": "output/trade_results.json"
   },
   "results": {
-    "bare 10 cm2, 5 deg": {
-      "fov_deg": 5.0,
+    "bare 10 cm2, aperture 10 deg": {
+      "fov_deg": 10.0,
       "particle_area_cm2": 10,
       "counts_per_orbit": {
         "signal": 0.011081300598709352,
-        "cxb": 113.31120594773583,
-        "dark_earth": 0.013332700939001444,
+        "cxb": 150.0834595227107,
+        "dark_earth": 0.013289583023145134,
         "solar_direct": 0.0,
         "solar_scattered": 0.0,
         "particle": 388.5297480720252,
-        "background": 501.85428672070003,
-        "total": 501.8653680212987
+        "background": 538.6264971777591,
+        "total": 538.6375784783579
       },
       "counts_mission": {
         "signal": 61.599542928764286,
-        "cxb": 629882.6056483443,
-        "dark_earth": 74.11479153846358,
+        "cxb": 834294.8939444397,
+        "dark_earth": 73.8751045193154,
         "solar_direct": 0.0,
         "solar_scattered": 0.0,
         "particle": 2159787.5341683463,
-        "background": 2789744.254608229,
-        "total": 2789805.8541511577
+        "background": 2994156.303217306,
+        "total": 2994217.9027602347
       },
-      "upper_limit_counts": 3275.187385396798,
-      "g_limit": 2.7003164725736657e-10
+      "upper_limit_counts": 3392.9693699132154,
+      "g_limit": 2.724272913275977e-10
     },
     "lobster 6U (2x3x1) f=30": {
       "fov_deg": 7.233044213093359,

@@ -38,7 +38,11 @@ Details and full assumptions are in each docstring.
 - **orbit_counts** — ties all of the above over an orbit; observes only in
   eclipse with Sun tangent altitude < 120 km. Optional `core` (solid angle,
   area) adds a narrow on-axis term on the boresight.
-- **payload** — `bare_ccd` (collimated CCD, particles over whole CCD) and
+- **payload** — `aperture_ccd` (DarkNESS-style: circular aperture radius a
+  in a plate at height h = (a+b)/tan(fov) above an equal-area-disk CCD of
+  radius b; response = circle overlap at shift h·tanθ × cosθ × QE; default
+  a = b, fov 10° → h = 20 cm for 10 cm², half response 4°), `bare_ccd`
+  (hard-edged collimated CCD, particles over whole CCD) and
   `lobster_ccd` (square extraction region of side s: focused core with
   Gaussian-spot enclosed fraction; arm/unfocused photons spread over the
   aperture footprint, fractions 2S/(DxDy) and S/(DxDy) per direction;

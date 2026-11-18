@@ -29,7 +29,7 @@ from astropy.time import Time
 
 from functions.geometry import MU_EARTH_KM3_S2, R_EQUATOR_KM
 from functions.orbit_counts import simulate_counts
-from functions.payload import bare_ccd, lobster_ccd
+from functions.payload import aperture_ccd, kwargs, lobster_ccd
 from functions.sensitivity import limiting_coupling, poisson_upper_limit
 
 OPTIC = dict(pore=40, wall=8, length=2.4, material="Ir", roughness=0.0, slope_error=3.0)
@@ -38,7 +38,8 @@ OPTIC = dict(pore=40, wall=8, length=2.4, material="Ir", roughness=0.0, slope_er
 def payloads(e, thickness):
     """Configurations under study. Focal length from the bus long axis."""
     return {
-        "bare 10 cm2, 5 deg": bare_ccd(10, 5.0, thickness),
+        # DarkNESS-style: circular aperture in a plate, 10 deg half cone.
+        "bare 10 cm2, aperture 10 deg": aperture_ccd(10, 10.0, thickness=thickness),
         "lobster 6U (2x3x1) f=30": lobster_ccd(e, {**OPTIC, "focal_length": 30, "aperture": (20, 9)}, thickness),
         "lobster 8U (2x4x1) f=40": lobster_ccd(e, {**OPTIC, "focal_length": 40, "aperture": (20, 9)}, thickness),
         "lobster linear 6U f=60": lobster_ccd(e, {**OPTIC, "focal_length": 60, "aperture": (9, 9)}, thickness),
@@ -82,7 +83,7 @@ def main():
         t0, per_orbit = time.time(), []
         for start in starts:
             edges = start + np.append(np.arange(0, period, a.step), period) * u.s
-            run = simulate_counts(e, edges, **payload, orbit=dict(h=a.h, inc=a.inc, epoch=start), **common)
+            run = simulate_counts(e, edges, **kwargs(payload), orbit=dict(h=a.h, inc=a.inc, epoch=start), **common)
             per_orbit.append(run["totals"])
         mean = {k: float(np.mean([t[k] for t in per_orbit])) for k in per_orbit[0]}
         total = {k: v * orbits for k, v in mean.items()}

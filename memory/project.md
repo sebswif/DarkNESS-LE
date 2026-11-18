@@ -44,6 +44,13 @@ backgrounds, lobster slope error 3′): 95% g limits 2.7e-10 (bare 10 cm²),
 GECOSAX (bare 2.0–2.4e-10, lobster 1.75e-10). Not converged in time or
 angular sampling.
 
+Bare payload changed to the DarkNESS-style aperture plate, 10° half cone
+(2026-11-18): g limit 2.72e-10 (CXB 8.3e5/yr vs 6.3e5 at the old hard 5°;
+particles still dominate). Lobster results unchanged. Figures from
+`output/fig_trade.py`: signal peaks near the limb (long grazing paths)
+and drops ~3–4 orders at mid-eclipse — larger than a rough nadir estimate
+(~20×), worth checking.
+
 **Prior work:** the sibling project `../gecosax-cubesat` has a validated
 optics trade (bare vs lobster at f ≤ 100 cm) and a geometric lobster model.
 
