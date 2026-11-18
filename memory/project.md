@@ -48,8 +48,16 @@ Bare payload changed to the DarkNESS-style aperture plate, 10° half cone
 (2026-11-18): g limit 2.72e-10 (CXB 8.3e5/yr vs 6.3e5 at the old hard 5°;
 particles still dominate). Lobster results unchanged. Figures from
 `output/fig_trade.py`: signal peaks near the limb (long grazing paths)
-and drops ~3–4 orders at mid-eclipse — larger than a rough nadir estimate
-(~20×), worth checking.
+and drops ~3.8 orders at mid-eclipse.
+
+Mid-eclipse dip checked (2026-11-18, 2026-01-01 orbit): it is physical,
+not a bug. At mid-eclipse the Sun ray points 28° from nadir and runs
+almost along the local field: |B| = 43 µT but B⊥ = 4.7 µT, path 500 km,
+∫B⊥ds = 2.3 T·m → vacuum P = 1.3e-20. At the limb B⊥ ≈ 22 µT over
+10 000 km, ∫B⊥ds = 190 T·m → P = 8.8e-17. Air (plasma mass and
+absorption) costs only ~20% except on the lowest grazing rays (~90%).
+So the signal depends strongly on the angle between B and the Sun line;
+orbit and season choice matter.
 
 **Prior work:** the sibling project `../gecosax-cubesat` has a validated
 optics trade (bare vs lobster at f ≤ 100 cm) and a geometric lobster model.
